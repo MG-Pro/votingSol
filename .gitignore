@@ -36,7 +36,15 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+coverage.json
+typechain
 
 # System files
 .DS_Store
 Thumbs.db
+
+.env
+
+#Hardhat files
+cache
+artifacts
