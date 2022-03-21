@@ -1,12 +1,49 @@
-<div class="toolbar" role="banner">
-
-  <span>Voting Dapp</span>
-  <div class="spacer"></div>
-
+<div class="toolbar">
+  <div class="container pt-3 pb-3">
+    <div class="row">
+      <span class="fs-3 fw-bold">Voting Dapp</span>
+    </div>
+  </div>
 </div>
 
-<div class="content" role="main">
+<main class="content pt-3 pb-3">
+  <div class="container new-voting mb-5">
+    <div class="row mb-3">
+      <div class="col">
+        <button class="btn btn-danger me-2" (click)="showAddForm()" [disabled]="!isOwner">Create new voting</button>
+        <span class="" *ngIf="!isOwner">Only for owner</span>
+      </div>
+    </div>
+    <div class="row">
+      <form class="form" *ngIf="addingMode" (ngSubmit)="addCandidate()">
+        <div class="col">
+          <div class="mb-3">
+            <label class="form-label">Candidate</label>
+            <input class="form-control" placeholder="Enter address" [(ngModel)]="candidateAddress" [ngModelOptions]="{standalone: true}">
+            <div class="invalid-feedback d-block" *ngIf="invalidMsg">
+              42 symbols!
+            </div>
+          </div>
+          <div class="mb-3">
+            <button class="btn btn-success me-2">Add</button>
+            <button class="btn btn-secondary" (click)="hideAddForm()">Close</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 
-</div>
+  <div class="container">
+    <div class="fs-3 mb-5">Candidates</div>
+    <div class="row mb-5" *ngFor="let address of candidatesAddress; let i = index">
+      <div class="col" >
+        <span class="fw-bold">{{i+1}}. </span>
+        <span class="fw-bold">{{address}}</span>
+        <span class="fw-bold ms-5">Votes: {{0}}</span>
+        <button class="btn btn-success ms-5">Vote</button>
+      </div>
+    </div>
+  </div>
 
-<router-outlet></router-outlet>
+</main>
+
