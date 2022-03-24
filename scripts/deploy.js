@@ -7,12 +7,12 @@ async function main() {
 
   console.log('Account balance:', (await deployer.getBalance()).toString())
 
-  const Greeter = await hre.ethers.getContractFactory('Greeter')
-  const greeter = await Greeter.deploy('Hello, Hardhat!')
+  const Voting = await hre.ethers.getContractFactory('Voting')
+  const voting = await Voting.deploy()
 
-  await greeter.deployed()
+  await voting.deployed()
 
-  console.log('Greeter deployed to:', greeter.address)
+  console.log('Contract deployed to:', voting.address)
 }
 
 main()

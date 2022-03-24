@@ -1,7 +1,8 @@
 <div class="toolbar">
   <div class="container pt-3 pb-3">
     <div class="row">
-      <span class="fs-3 fw-bold">Voting Dapp</span>
+      <span class="col fs-3 fw-bold">Voting Dapp</span>
+      <div class="col text-end">{{userAddress}} <br> {{userBalance}}</div>
     </div>
   </div>
 </div>
@@ -10,7 +11,9 @@
   <div class="container new-voting mb-5">
     <div class="row mb-3">
       <div class="col">
-        <button class="btn btn-danger me-2" (click)="showAddForm()" [disabled]="!isOwner">Create new voting</button>
+        <button class="btn btn-danger me-2" (click)="showAddForm()" [disabled]="!isOwner">
+          {{!activeVotingId ? 'Create new voting' : 'Add candidate'}}
+        </button>
         <span class="" *ngIf="!isOwner">Only for owner</span>
       </div>
     </div>
@@ -19,7 +22,8 @@
         <div class="col">
           <div class="mb-3">
             <label class="form-label">Candidate</label>
-            <input class="form-control" placeholder="Enter address" [(ngModel)]="candidateAddress" [ngModelOptions]="{standalone: true}">
+            <input class="form-control" placeholder="Enter address" [(ngModel)]="newCandidateAddress"
+                   [ngModelOptions]="{standalone: true}">
             <div class="invalid-feedback d-block" *ngIf="invalidMsg">
               42 symbols!
             </div>
@@ -34,15 +38,30 @@
   </div>
 
   <div class="container">
-    <div class="fs-3 mb-5">Candidates</div>
-    <div class="row mb-5" *ngFor="let address of candidatesAddress; let i = index">
+    <div class="row">
       <div class="col" >
-        <span class="fw-bold">{{i+1}}. </span>
-        <span class="fw-bold">{{address}}</span>
-        <span class="fw-bold ms-5">Votes: {{0}}</span>
-        <button class="btn btn-success ms-5">Vote</button>
+        <div class="fs-3 mb-5" *ngIf="votings.length">Votings</div>
+        <ul class="row mb-5" *ngFor="let voting of votings">
+          <li class="col voting" (click)="showActive(voting)">
+            <span class="fw-bold">{{voting.id}}. </span>
+            <span class="fw-bold">{{voting.startDate}}</span>
+            <span class="fw-bold" *ngIf="voting.winner">{{voting.winner}}</span>
+          </li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="fs-3 mb-5" *ngIf="candidatesList.length">Candidates</div>
+        <div class="row mb-5" *ngFor="let candidate of candidatesList; let i = index">
+          <div class="col">
+            <span class="fw-bold">{{i + 1}}. </span>
+            <span class="fw-bold">{{candidate.address}}</span>
+            <span class="fw-bold ms-5">Votes: {{candidate.votes}}</span>
+            <button class="btn btn-success ms-5" (click)="vote(candidate)">Vote</button>
+          </div>
+        </div>
       </div>
     </div>
+
   </div>
 
 </main>
