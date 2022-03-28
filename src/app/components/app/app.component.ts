@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component} from '@angular/core'
 import {ethers, Signer, Contract} from 'ethers'
 import artifact from 'artifacts/contracts/Voting.sol/Voting.json'
-
+import { environment } from 'src/environments/environment'
 interface ICandidate {
   candidateAddress: string,
   votes: number,
@@ -17,7 +17,7 @@ interface IVoting {
   candidatesObj: ICandidate[],
 }
 
-const contract = '0x5FbDB2315678afecb367f032d93F642f64180aa3'
+const contract = environment.contract
 
 @Component({
   selector: 'app-root',

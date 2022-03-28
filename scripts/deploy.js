@@ -5,8 +5,6 @@ async function main() {
 
   console.log('Deploying contracts with the account:', deployer.address)
 
-  console.log('Account balance:', (await deployer.getBalance()).toString())
-
   const Voting = await hre.ethers.getContractFactory('Voting')
   const voting = await Voting.deploy()
 
