@@ -20,7 +20,9 @@
         <div class="fs-5 fw-bold">Owner panel</div>
         <div class="fs-6 fw-bold">Contract address: {{this.contract.address}}</div>
         <div class="fs-6 fw-bold">Contract balance: {{this.contractBalance}} Eth</div>
-        <button class="btn btn-success mt-3" [disabled]="this.contractBalance <= 0" (click)="sendFee()">Send Fee</button>
+        <button class="btn btn-success mt-3"
+                [disabled]="+this.contractBalance <= 0"
+                (click)="takeFee()">Take Fee</button>
       </div>
     </div>
     <div class="row">

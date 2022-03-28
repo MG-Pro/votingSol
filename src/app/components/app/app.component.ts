@@ -17,7 +17,7 @@ interface IVoting {
   candidatesObj: ICandidate[],
 }
 
-const contract = '0x68B1D87F95878fE05B998F19b66F4baba5De1aed'
+const contract = '0x5FbDB2315678afecb367f032d93F642f64180aa3'
 
 @Component({
   selector: 'app-root',
@@ -29,7 +29,7 @@ export class AppComponent {
   public isOwner: boolean = false
   public userAddress: string
   public userBalance: string
-  public contractBalance: number
+  public contractBalance: string
   public addingMode: boolean = false
   public newCandidateAddress: string = '0xa19Ad61447e5EA79bdDCeB037986944c41e198BC'
   public invalidMsg: boolean = false
@@ -39,7 +39,8 @@ export class AppComponent {
   private signer: Signer
   public contract: Contract
 
-  constructor(private cd: ChangeDetectorRef) {}
+  constructor(private cd: ChangeDetectorRef) {
+  }
 
   public async ngOnInit(): Promise<void> {
     const ethereum = (window as any).ethereum
@@ -54,10 +55,7 @@ export class AppComponent {
     this.contract = new ethers.Contract(contract, artifact.abi, this.signer)
     this.isOwner = await this.contract['isOwner']()
     this.activeVotingId = (await this.contract['getActiveVotingId']()).toNumber()
-    if (this.isOwner) {
-      this.contractBalance = parseInt(ethers.utils.formatEther((await provider.getBalance(this.contract.address))))
-    }
-    await this.update();
+    await this.update()
   }
 
   public showAddForm(): void {
@@ -77,10 +75,34 @@ export class AppComponent {
       return
     }
 
-    await this.contract['addCandidate'](this.newCandidateAddress)
+    const tx = await this.contract['addCandidate'](this.newCandidateAddress)
     this.hideAddForm()
+    await tx.wait()
     this.activeVotingId = (await this.contract['getActiveVotingId']()).toNumber()
-    await this.update();
+    await this.update()
+  }
+
+  public async vote(candidate: ICandidate): Promise<void> {
+    const tx = await this.contract['vote'](candidate.candidateAddress, {
+      value: ethers.utils.parseEther('0.01'),
+    })
+    await tx.wait()
+    await this.update()
+  }
+
+  public async showActive(voting: IVoting): Promise<void> {
+    this.shownVoting = voting
+    await this.getCandidates()
+    this.cd.detectChanges()
+  }
+
+  public async stopVoting(): Promise<void> {
+    await this.contract['stopVoting']()
+    await this.update()
+  }
+
+  public async takeFee(): Promise<void> {
+    await this.contract['sendFeeToOwner']()
   }
 
   private async getVotings(): Promise<void> {
@@ -94,7 +116,6 @@ export class AppComponent {
     })
     if (this.votings.length) {
       await this.showActive(this.votings[0])
-      await this.getCandidates()
     }
   }
 
@@ -112,31 +133,12 @@ export class AppComponent {
     this.shownVoting = {...this.shownVoting, candidatesObj}
   }
 
-  public async vote(candidate: ICandidate): Promise<void> {
-    await this.contract['vote'](candidate.candidateAddress, {
-      value: ethers.utils.parseEther('0.01'),
-    })
-    await this.update();
-  }
-
-  public async showActive(voting: IVoting): Promise<void> {
-    this.shownVoting = voting
-    await this.getCandidates()
-    this.cd.detectChanges()
-  }
-
-  public async stopVoting(): Promise<void> {
-    await this.contract['stopVoting']()
-    await this.update();
-  }
-
   private async update(): Promise<void> {
     await this.getVotings()
+    if (this.isOwner) {
+      this.contractBalance = ethers.utils.formatEther((await this.contract['getBalance']()))
+    }
     this.cd.detectChanges()
     console.log(this.votings)
-  }
-
-  public async sendFee(): Promise<void> {
-    await this.contract['sendFeeToOwner']()
   }
 }
