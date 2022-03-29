@@ -16,11 +16,12 @@ contract Voting {
   struct Candidate {
     address candidateAddress;
     uint votes;
+    bool exist;
   }
 
   address private owner;
   uint private activeVotingId;
-  uint private votingMaxTime = 1000 * 60 * 60 * 24 * 3;
+  uint private votingMaxTime = 10;
   mapping (address => Candidate) private candidates;
   VotingStore[] private votings;
 
@@ -30,19 +31,22 @@ contract Voting {
   }
 
   function getActiveVotingId() public view returns(int) {
-    if (votings.length > 0 && activeVotingId == 0) {
-      return int(activeVotingId);
+    for(uint i = 0; i < votings.length; i++) {
+      if(votings[i].isActive) {
+        return int(i);
+      }
     }
+
     return -1;
   }
 
   function addCandidate(address _candidate) external {
     require(msg.sender == owner, "Only for owner");
-    if(votings.length == 0 || isExpire(votings[activeVotingId])) {
+    if(votings.length == 0 || !votings[activeVotingId].isActive) {
       createVoting();
     }
     votings[activeVotingId].candidates.push(_candidate);
-    candidates[_candidate] = Candidate(_candidate, 0);
+    candidates[_candidate] = Candidate(_candidate, 0, true);
   }
 
   function stopVoting() external {
@@ -61,6 +65,7 @@ contract Voting {
       }
     }
     votings[activeVotingId].winner = winner;
+    sendRewardToWinner(winner);
   }
 
   function isOwner() external view returns(bool) {
@@ -88,13 +93,15 @@ contract Voting {
     require(msg.value == 0.01 ether, "Pay 0.01 eth");
     require(getActiveVotingId() >= 0, "Not active votings");
     require(!isVoter(msg.sender), "Already voted");
+    require(candidates[_candidate].exist, "Candidate do not exist");
 
     votings[activeVotingId].voters.push(msg.sender);
+    votings[activeVotingId].candidates.push(_candidate);
     candidates[_candidate].votes++;
   }
 
   function isExpire(VotingStore memory voting) private view returns(bool) {
-    return voting.startDate > block.timestamp + votingMaxTime;
+    return block.timestamp > voting.startDate  + votingMaxTime;
   }
 
   function isVoter(address _voter) private view returns(bool) {
@@ -107,8 +114,7 @@ contract Voting {
     return false;
   }
 
-  function sendRewardToWinner() private {
-    address winner = votings[activeVotingId].winner;
+  function sendRewardToWinner(address winner) private {
     payable(winner).transfer(address(this).balance / 100 * 90);
   }
 

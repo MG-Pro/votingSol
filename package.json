@@ -5,10 +5,11 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "dev": "hardhat node",
+    "test-contract": "hardhat test",
+    "dev-network": "hardhat node",
     "watch": "ng build --watch --configuration development",
     "compile": "hardhat clean && hardhat compile",
-    "deploy-dev": "hardhat run scripts/deploy.js --network localhost",
+    "dev-deploy": "hardhat run scripts/deploy.js --network localhost",
     "coverage": "hardhat coverage"
   },
   "private": true,

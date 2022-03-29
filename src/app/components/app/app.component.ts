@@ -139,6 +139,5 @@ export class AppComponent {
       this.contractBalance = ethers.utils.formatEther((await this.contract['getBalance']()))
     }
     this.cd.detectChanges()
-    console.log(this.votings)
   }
 }
