@@ -4,49 +4,79 @@ pragma solidity ^0.8.3;
 import "hardhat/console.sol";
 
 contract Voting {
-  struct VotingStore {
+  uint private constant votingPeriod = 60 * 60 * 24 * 3;
+
+  struct Candidate {
+    address id;
+    uint votes;
+  }
+
+  struct VotingItem {
     uint startDate;
-    uint id;
     bool isActive;
     address winner;
     address[] voters;
-    address[] candidates;
-  }
-
-  struct Candidate {
-    address candidateAddress;
-    uint votes;
-    bool exist;
+    Candidate[] candidates;
   }
 
   address private owner;
   uint private activeVotingId;
-  uint private votingMaxTime = 10;
-  mapping (address => Candidate) private candidates;
-  VotingStore[] private votings;
+  mapping (uint => VotingItem) private votings;
+  bool private canSendFee;
 
   constructor() {
     owner = msg.sender;
     console.log(owner);
   }
 
-  function getActiveVotingId() public view returns(int) {
-    for(uint i = 0; i < votings.length; i++) {
-      if(votings[i].isActive) {
-        return int(i);
-      }
-    }
-
-    return -1;
-  }
-
   function addCandidate(address _candidate) external {
     require(msg.sender == owner, "Only for owner");
-    if(votings.length == 0 || !votings[activeVotingId].isActive) {
-      createVoting();
+
+    if(!votings[activeVotingId].isActive) {
+      activeVotingId++;
+
+      VotingItem storage voting = votings[activeVotingId];
+      voting.startDate = block.timestamp;
+      voting.isActive = true;
+      canSendFee = false;
     }
-    votings[activeVotingId].candidates.push(_candidate);
-    candidates[_candidate] = Candidate(_candidate, 0, true);
+
+    votings[activeVotingId].candidates.push(Candidate({
+    id: _candidate,
+    votes: 0
+    }));
+  }
+
+  function getVotings() external view returns(VotingItem[] memory) {
+    VotingItem[] memory votingItems = new VotingItem[](activeVotingId);
+    for(uint i; i< activeVotingId; i++) {
+      votingItems[i] = votings[i + 1];
+    }
+    return votingItems;
+  }
+
+  function vote(address _candidate) external payable {
+    require(msg.value == 0.01 ether, "Pay 0.01 eth");
+    require(getActiveVotingId() >= 0, "Not active votings!");
+    require(!isExpire(votings[activeVotingId]), "Voting expired!");
+    require(!isVoter(msg.sender), "Already voted!");
+
+    int indexCandidate = findCandidateIndex(_candidate);
+    if (indexCandidate < 0) {
+      revert("Candidate do not exist!");
+    }
+
+    votings[activeVotingId].voters.push(msg.sender);
+    votings[activeVotingId].candidates[uint(indexCandidate)].votes++;
+  }
+
+  function getActiveVotingId() public view returns(int) {
+    for(uint i = 0; i < activeVotingId; i++) {
+      if(votings[i + 1].isActive) {
+        return int(activeVotingId);
+      }
+    }
+    return -1;
   }
 
   function stopVoting() external {
@@ -55,29 +85,27 @@ contract Voting {
     votings[activeVotingId].isActive = false;
 
     address winner;
-    address[] memory candidatesList = votings[activeVotingId].candidates;
     uint max;
+    Candidate[] memory candidates = votings[activeVotingId].candidates;
 
-    for(uint i = 0; i < candidatesList.length; i++) {
-      if(candidates[candidatesList[i]].votes >= max) {
-        max = candidates[candidatesList[i]].votes;
-        winner = candidatesList[i];
+    for(uint i = 0; i < candidates.length; i++) {
+      if(candidates[i].votes >= max) {
+        max = candidates[i].votes;
+        winner = candidates[i].id;
       }
     }
     votings[activeVotingId].winner = winner;
     sendRewardToWinner(winner);
+    canSendFee = true;
   }
 
   function isOwner() external view returns(bool) {
     return owner == msg.sender;
   }
 
-  function getCandidateByAddress(address _candidate) external view returns(Candidate memory) {
-    return candidates[_candidate];
-  }
-
-  function sendFeeToOwner() external payable {
+  function sendFeeToOwner() external {
     require(msg.sender == owner, "Only for owner");
+    require(canSendFee, "Voting is active. Wait!");
     payable(owner).transfer(address(this).balance);
   }
 
@@ -85,23 +113,12 @@ contract Voting {
     return address(this).balance;
   }
 
-  function getVotings() external view returns(VotingStore[] memory) {
-    return votings;
+  function sendRewardToWinner(address _winner) private {
+    payable(_winner).transfer(address(this).balance / 100 * 90);
   }
 
-  function vote(address _candidate) external payable {
-    require(msg.value == 0.01 ether, "Pay 0.01 eth");
-    require(getActiveVotingId() >= 0, "Not active votings");
-    require(!isVoter(msg.sender), "Already voted");
-    require(candidates[_candidate].exist, "Candidate do not exist");
-
-    votings[activeVotingId].voters.push(msg.sender);
-    votings[activeVotingId].candidates.push(_candidate);
-    candidates[_candidate].votes++;
-  }
-
-  function isExpire(VotingStore memory voting) private view returns(bool) {
-    return block.timestamp > voting.startDate  + votingMaxTime;
+  function isExpire(VotingItem memory _voting) private view returns(bool) {
+    return block.timestamp > _voting.startDate  + votingPeriod;
   }
 
   function isVoter(address _voter) private view returns(bool) {
@@ -114,24 +131,12 @@ contract Voting {
     return false;
   }
 
-  function sendRewardToWinner(address winner) private {
-    payable(winner).transfer(address(this).balance / 100 * 90);
-  }
-
-  function createVoting() private {
-    address[] memory candidatesInt;
-    address[] memory votersInt;
-    uint votingCount = votings.length;
-
-    votings.push(VotingStore({
-    startDate: block.timestamp,
-    id: votingCount,
-    isActive: true,
-    winner: address(0x0),
-    candidates: candidatesInt,
-    voters: votersInt
-    }));
-
-    activeVotingId = votingCount;
+  function findCandidateIndex(address _candidate) private view returns(int) {
+    for(uint i; i < votings[activeVotingId].candidates.length; i++) {
+      if(votings[activeVotingId].candidates[i].id == _candidate) {
+        return int(i);
+      }
+    }
+    return -1;
   }
 }

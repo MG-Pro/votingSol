@@ -49,16 +49,16 @@
     <div class="row">
       <div class="col" >
         <div class="fs-3 mb-5" *ngIf="votings.length">Votings</div>
-        <ul class="row mb-5" *ngFor="let voting of votings">
+        <ul class="row mb-5" *ngFor="let voting of votings; let i = index">
           <li class="col voting" (click)="showActive(voting)">
             <div class="row">
               <div class="col">
-                <span class="fw-bold">{{voting.id}}. </span>
-                <span class="fw-bold">{{voting.startDate}}</span> <br>
+                <span class="fw-bold">{{i + 1}}. </span>
+                <span class="fw-bold">{{voting.startDate | date}}</span> <br>
                 <span class="fw-bold" *ngIf="voting.winner">Win: {{voting.winner}}</span>
               </div>
               <div class="col text-end">
-                <button class="btn btn-secondary" *ngIf="voting.winner" (click)="stopVoting()">Stop</button>
+                <button class="btn btn-secondary" [disabled]="!voting.winner" (click)="stopVoting()">Stop</button>
               </div>
             </div>
 
@@ -66,11 +66,11 @@
         </ul>
       </div>
       <div class="col">
-        <div class="fs-3 mb-5" *ngIf="this.shownVoting?.candidatesObj.length">Candidates</div>
-        <div class="row mb-5" *ngFor="let candidate of this.shownVoting?.candidatesObj; let i = index">
+        <div class="fs-3 mb-5" *ngIf="this.shownVoting?.candidates.length">Candidates</div>
+        <div class="row mb-5" *ngFor="let candidate of this.shownVoting?.candidates; let i = index">
           <div class="col">
             <span class="fw-bold">{{i + 1}}. </span>
-            <span class="fw-bold">{{candidate.candidateAddress}}</span>
+            <span class="fw-bold">{{candidate.id}}</span>
             <span class="fw-bold ms-5">Votes: {{candidate.votes}}</span>
             <button class="btn btn-success ms-5" (click)="vote(candidate)">Vote</button>
           </div>

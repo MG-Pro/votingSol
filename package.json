@@ -37,6 +37,7 @@
     "@types/jasmine": "~3.10.0",
     "@types/node": "^12.11.1",
     "@metamask/providers": "^8.1.1",
+    "hardhat-gas-reporter": "^1.0.8",
     "chai": "^4.3.6",
     "dotenv": "^16.0.0",
     "ethereum-waffle": "^4.0.0-alpha.0",

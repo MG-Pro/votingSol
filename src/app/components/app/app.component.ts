@@ -1,20 +1,18 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component} from '@angular/core'
 import {ethers, Signer, Contract} from 'ethers'
 import artifact from 'artifacts/contracts/Voting.sol/Voting.json'
-import { environment } from 'src/environments/environment'
+import {environment} from 'src/environments/environment'
+
 interface ICandidate {
-  candidateAddress: string,
+  id: string,
   votes: number,
 }
 
 interface IVoting {
-  id: number,
   startDate: number,
-  candidates: string[],
   voters: string[],
+  candidates: ICandidate[],
   winner: string,
-  winnerObj: ICandidate,
-  candidatesObj: ICandidate[],
 }
 
 const contract = environment.contract
@@ -83,7 +81,7 @@ export class AppComponent {
   }
 
   public async vote(candidate: ICandidate): Promise<void> {
-    const tx = await this.contract['vote'](candidate.candidateAddress, {
+    const tx = await this.contract['vote'](candidate.id, {
       value: ethers.utils.parseEther('0.01'),
     })
     await tx.wait()
@@ -92,7 +90,6 @@ export class AppComponent {
 
   public async showActive(voting: IVoting): Promise<void> {
     this.shownVoting = voting
-    await this.getCandidates()
     this.cd.detectChanges()
   }
 
@@ -106,31 +103,21 @@ export class AppComponent {
   }
 
   private async getVotings(): Promise<void> {
-    this.votings = (await this.contract['getVotings']()).map(voting => {
+    this.votings = (await this.contract['getVotings']()).map((voting) => {
       return {
-        id: voting.id.toNumber(),
         startDate: voting.startDate.toNumber(),
-        candidates: voting.candidates,
+        voters: voting.voters,
+        candidates: voting.candidates.map(({id, votes}) => ({
+          id,
+          votes: votes.toNumber(),
+        })),
         winner: voting.winner === '0x0000000000000000000000000000000000000000' ? null : voting.winner,
       }
     })
+    console.log(this.votings)
     if (this.votings.length) {
       await this.showActive(this.votings[0])
     }
-  }
-
-  private async getCandidates(): Promise<void> {
-    const reqCandidates = this.shownVoting.candidates.map(addr => {
-      return this.contract['getCandidateByAddress'](addr)
-    })
-
-    const candidatesObj = (await Promise.all(reqCandidates)).map(item => {
-      return {
-        candidateAddress: item.candidateAddress,
-        votes: item.votes.toNumber(),
-      }
-    })
-    this.shownVoting = {...this.shownVoting, candidatesObj}
   }
 
   private async update(): Promise<void> {

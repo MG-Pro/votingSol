@@ -169,7 +169,6 @@ describe('Voting', function () {
       })
       const [voting] = await contract.connect(user1).getVotings()
       const candidate = await contract.connect(user1).getCandidateByAddress(voting.candidates[0])
-      console.log(candidate)
       await expect(candidate.votes).to.equal(1)
     })
 
