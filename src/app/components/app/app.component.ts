@@ -10,7 +10,6 @@ interface ICandidate {
 
 interface IVoting {
   startDate: number,
-  voters: string[],
   candidates: ICandidate[],
   winner: string,
 }
@@ -32,7 +31,7 @@ export class AppComponent {
   public newCandidateAddress: string = '0xa19Ad61447e5EA79bdDCeB037986944c41e198BC'
   public invalidMsg: boolean = false
   public votings: IVoting[] = []
-  public activeVotingId: number = null
+  public activeVotingId: number
   public shownVoting: IVoting
   private signer: Signer
   public contract: Contract
@@ -68,7 +67,7 @@ export class AppComponent {
 
   public async addCandidate(): Promise<void> {
     this.invalidMsg = false
-    if (this.newCandidateAddress.length !== 42) {
+    if (!ethers.utils.isAddress(this.newCandidateAddress)) {
       this.invalidMsg = true
       return
     }
@@ -106,15 +105,13 @@ export class AppComponent {
     this.votings = (await this.contract['getVotings']()).map((voting) => {
       return {
         startDate: voting.startDate.toNumber(),
-        voters: voting.voters,
         candidates: voting.candidates.map(({id, votes}) => ({
           id,
           votes: votes.toNumber(),
         })),
-        winner: voting.winner === '0x0000000000000000000000000000000000000000' ? null : voting.winner,
+        winner: voting.winner !== ethers.constants.AddressZero ? voting.winner : null,
       }
     })
-    console.log(this.votings)
     if (this.votings.length) {
       await this.showActive(this.votings[0])
     }

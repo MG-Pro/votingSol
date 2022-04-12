@@ -12,7 +12,7 @@
     <div class="row mb-3">
       <div class="col">
         <button class="btn btn-danger me-2" (click)="showAddForm()" [disabled]="!isOwner">
-          {{activeVotingId < 0 ? 'Create new voting' : 'Add candidate'}}
+          {{!activeVotingId ? 'Create new voting' : 'Add candidate'}}
         </button>
         <span class="" *ngIf="!isOwner">Only for owner</span>
       </div>
@@ -33,7 +33,7 @@
             <input class="form-control" placeholder="Enter address" [(ngModel)]="newCandidateAddress"
                    [ngModelOptions]="{standalone: true}">
             <div class="invalid-feedback d-block" *ngIf="invalidMsg">
-              42 symbols!
+              No valid address!
             </div>
           </div>
           <div class="mb-3">

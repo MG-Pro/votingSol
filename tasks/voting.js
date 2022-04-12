@@ -33,17 +33,6 @@ task('getVotings', 'List of votings')
     console.log(result)
   })
 
-task('getCandidateByAddress', 'Candidate data')
-  .addParam('candidate')
-  .addParam('privateKey', '', PRIVATE_KEY)
-  .setAction(async (taskArgs, hre) => {
-    const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
-    const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
-    const result = await contract.getCandidateByAddress(taskArgs.candidate)
-    console.log(result)
-  })
-
 task('getBalance', 'Balance')
   .addParam('privateKey', '', PRIVATE_KEY)
   .setAction(async (taskArgs, hre) => {
