@@ -1,2 +1,2 @@
-# VotingSol
+# VotingSol v.2
 

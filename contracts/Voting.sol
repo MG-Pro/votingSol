@@ -1,115 +1,121 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "hardhat/console.sol";
-
 contract Voting {
-  uint private constant votingPeriod = 60 * 60 * 24 * 3;
+  uint private constant votingPeriod = 259200;
 
   struct Candidate {
     address id;
     uint votes;
   }
 
-  struct VotingItem {
+  struct VotingData {
     uint startDate;
     bool isActive;
     address winner;
-    address[] voters;
     Candidate[] candidates;
+  }
+
+  struct VotingItem {
+    VotingData data;
+    mapping(address => uint) voters;
   }
 
   address private owner;
   uint private activeVotingId;
-  mapping (uint => VotingItem) private votings;
-  bool private canSendFee;
+  uint private nextVotingId = 1;
+  mapping(uint => VotingItem) private votings;
+
+  modifier onlyOwner {
+    require(msg.sender == owner, "Only for owner");
+    _;
+  }
+
+  modifier hasActiveVoting {
+    require(activeVotingId != 0, "Not active votings!");
+    _;
+  }
 
   constructor() {
     owner = msg.sender;
-    console.log(owner);
   }
 
-  function addCandidate(address _candidate) external {
-    require(msg.sender == owner, "Only for owner");
-
-    if(!votings[activeVotingId].isActive) {
-      activeVotingId++;
+  function addCandidate(address _candidate) external onlyOwner {
+    require(findIndex(_candidate) < 0, "Candidate exist!");
+    if (activeVotingId == 0) {
+      activeVotingId = nextVotingId;
+      nextVotingId++;
 
       VotingItem storage voting = votings[activeVotingId];
-      voting.startDate = block.timestamp;
-      voting.isActive = true;
-      canSendFee = false;
+      voting.data.startDate = block.timestamp;
+      voting.data.isActive = true;
     }
 
-    votings[activeVotingId].candidates.push(Candidate({
-    id: _candidate,
-    votes: 0
+    votings[activeVotingId].data.candidates.push(Candidate({
+    id : _candidate,
+    votes : 0
     }));
   }
 
-  function getVotings() external view returns(VotingItem[] memory) {
-    VotingItem[] memory votingItems = new VotingItem[](activeVotingId);
-    for(uint i; i< activeVotingId; i++) {
-      votingItems[i] = votings[i + 1];
+  function getVotings() external view returns (VotingData[] memory) {
+    VotingData[] memory votingItems = new VotingData[](nextVotingId - 1);
+    for (uint i; i < nextVotingId - 1; i++) {
+      votingItems[i] = VotingData({
+      startDate: votings[i+1].data.startDate,
+      winner: votings[i+1].data.winner,
+      candidates: votings[i+1].data.candidates,
+      isActive: votings[i+1].data.isActive
+      });
     }
     return votingItems;
   }
 
-  function vote(address _candidate) external payable {
+  function vote(address _candidate) external payable hasActiveVoting {
+    require(!isExpire(), "Voting time expired!");
     require(msg.value == 0.01 ether, "Pay 0.01 eth");
-    require(getActiveVotingId() >= 0, "Not active votings!");
-    require(!isExpire(votings[activeVotingId]), "Voting expired!");
     require(!isVoter(msg.sender), "Already voted!");
 
-    int indexCandidate = findCandidateIndex(_candidate);
+    int indexCandidate = findIndex(_candidate);
     if (indexCandidate < 0) {
       revert("Candidate do not exist!");
     }
 
-    votings[activeVotingId].voters.push(msg.sender);
-    votings[activeVotingId].candidates[uint(indexCandidate)].votes++;
+    votings[activeVotingId].voters[msg.sender]++;
+    votings[activeVotingId].data.candidates[uint(indexCandidate)].votes++;
   }
 
-  function getActiveVotingId() public view returns(int) {
-    for(uint i = 0; i < activeVotingId; i++) {
-      if(votings[i + 1].isActive) {
-        return int(activeVotingId);
-      }
-    }
-    return -1;
+  function getActiveVotingId() public view returns (uint) {
+    return activeVotingId;
   }
 
-  function stopVoting() external {
-    require(getActiveVotingId() >= 0, "Not active votings");
-    require(isExpire(votings[activeVotingId]), "Voting time not expired");
-    votings[activeVotingId].isActive = false;
+  function stopVoting() external hasActiveVoting {
+    require(isExpire(), "Voting time not expired");
 
     address winner;
     uint max;
-    Candidate[] memory candidates = votings[activeVotingId].candidates;
 
-    for(uint i = 0; i < candidates.length; i++) {
-      if(candidates[i].votes >= max) {
-        max = candidates[i].votes;
-        winner = candidates[i].id;
+    for (uint i = 0; i < votings[activeVotingId].data.candidates.length; i++) {
+      if (votings[activeVotingId].data.candidates[i].votes != 0 && votings[activeVotingId].data.candidates[i].votes >= max) {
+        max = votings[activeVotingId].data.candidates[i].votes;
+        winner = votings[activeVotingId].data.candidates[i].id;
       }
     }
-    votings[activeVotingId].winner = winner;
+    votings[activeVotingId].data.winner = winner;
+    votings[activeVotingId].data.isActive = false;
+    activeVotingId = 0;
     sendRewardToWinner(winner);
-    canSendFee = true;
   }
 
-  function isOwner() external view returns(bool) {
+  function isOwner() external view returns (bool) {
     return owner == msg.sender;
   }
 
-  function sendFeeToOwner() external {
-    require(msg.sender == owner, "Only for owner");
-    require(canSendFee, "Voting is active. Wait!");
+  function sendFeeToOwner() external onlyOwner  {
+    require(activeVotingId == 0, "Voting is active. Wait!");
     payable(owner).transfer(address(this).balance);
   }
 
-  function getBalance() external view returns(uint) {
+  function getBalance() external view returns (uint) {
     return address(this).balance;
   }
 
@@ -117,26 +123,20 @@ contract Voting {
     payable(_winner).transfer(address(this).balance / 100 * 90);
   }
 
-  function isExpire(VotingItem memory _voting) private view returns(bool) {
-    return block.timestamp > _voting.startDate  + votingPeriod;
+  function isExpire() private view returns (bool) {
+    return block.timestamp > votings[activeVotingId].data.startDate + votingPeriod;
   }
 
-  function isVoter(address _voter) private view returns(bool) {
-    address[] memory voters = votings[activeVotingId].voters;
-    for(uint i = 0; i < voters.length; i++) {
-      if(voters[i] == _voter) {
-        return true;
-      }
-    }
-    return false;
+  function isVoter(address _voter) private view returns (bool) {
+    return votings[activeVotingId].voters[_voter] > 0;
   }
 
-  function findCandidateIndex(address _candidate) private view returns(int) {
-    for(uint i; i < votings[activeVotingId].candidates.length; i++) {
-      if(votings[activeVotingId].candidates[i].id == _candidate) {
+  function findIndex(address _candidate) private view returns (int) {
+    for (uint i; i < votings[activeVotingId].data.candidates.length; i++) {
+      if (votings[activeVotingId].data.candidates[i].id == _candidate) {
         return int(i);
       }
     }
-    return -1;
+    return - 1;
   }
 }
