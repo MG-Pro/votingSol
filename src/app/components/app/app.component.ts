@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component} from '@angular/core'
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit} from '@angular/core'
 import {ethers, Signer, Contract} from 'ethers'
 import artifact from 'artifacts/contracts/Voting.sol/Voting.json'
 import {environment} from 'src/environments/environment'
@@ -22,7 +22,7 @@ const contract = environment.contract
   styleUrls: ['./app.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   public isOwner: boolean = false
   public userAddress: string
   public userBalance: string

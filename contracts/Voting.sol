@@ -51,9 +51,8 @@ contract Voting {
       activeVotingId = nextVotingId;
       nextVotingId++;
 
-      VotingItem storage voting = votings[activeVotingId];
-      voting.startDate = block.timestamp;
-      voting.isActive = true;
+      votings[activeVotingId].startDate = block.timestamp;
+      votings[activeVotingId].isActive = true;
     }
 
     votings[activeVotingId].candidates[_candidate];
@@ -86,10 +85,10 @@ contract Voting {
   }
 
   function vote(address _candidate) external payable hasActiveVoting {
-    require(!isExpire(), "Voting time expired!");
     require(msg.value == 0.01 ether, "Pay 0.01 eth");
-    require(!isVoted(msg.sender), "Already voted!");
+    require(!isExpire(), "Voting time expired!");
     require(isExist(_candidate), "Candidate do not exist!");
+    require(!votings[activeVotingId].voters[msg.sender], "Already voted!");
 
     votings[activeVotingId].voters[msg.sender] = true;
     votings[activeVotingId].candidates[_candidate]++;
@@ -107,8 +106,10 @@ contract Voting {
 
     for (uint i = 0; i < votings[activeVotingId].count; i++) {
       address id = votings[activeVotingId].mapper[i];
-      if (votings[activeVotingId].candidates[id] != 0 && votings[activeVotingId].candidates[id] >= max) {
-        max = votings[activeVotingId].candidates[id];
+      uint vt = votings[activeVotingId].candidates[id];
+
+      if (vt != 0 && vt >= max) {
+        max = vt;
         winner = id;
       }
     }
@@ -137,10 +138,6 @@ contract Voting {
 
   function isExpire() private view returns (bool) {
     return block.timestamp > votings[activeVotingId].startDate + votingPeriod;
-  }
-
-  function isVoted(address _voter) private view returns (bool) {
-    return votings[activeVotingId].voters[_voter];
   }
 
   function isExist(address _candidate) private view returns (bool) {
