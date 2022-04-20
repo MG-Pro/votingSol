@@ -1,7 +1,6 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit} from '@angular/core'
 import {ethers, Signer, Contract} from 'ethers'
 import artifact from 'artifacts/contracts/Voting.sol/Voting.json'
-import {environment} from 'src/environments/environment'
 
 interface ICandidate {
   id: string,
@@ -13,8 +12,6 @@ interface IVoting {
   candidates: ICandidate[],
   winner: string,
 }
-
-const contract = environment.contract
 
 @Component({
   selector: 'app-root',
@@ -35,6 +32,7 @@ export class AppComponent implements OnInit {
   public shownVoting: IVoting
   private signer: Signer
   public contract: Contract
+  private contractAddress = process.env['NG_APP_CONTRACT']
 
   constructor(private cd: ChangeDetectorRef) {
   }
@@ -49,7 +47,7 @@ export class AppComponent implements OnInit {
     this.signer = provider.getSigner()
     this.userAddress = await this.signer.getAddress()
     this.userBalance = ethers.utils.formatEther((await this.signer.getBalance()))
-    this.contract = new ethers.Contract(contract, artifact.abi, this.signer)
+    this.contract = new ethers.Contract(this.contractAddress, artifact.abi, this.signer)
     this.isOwner = await this.contract['isOwner']()
     this.activeVotingId = (await this.contract['getActiveVotingId']()).toNumber()
     await this.update()

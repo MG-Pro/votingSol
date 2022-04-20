@@ -33,6 +33,7 @@
     "@angular/cli": "~13.3.0",
     "@angular/compiler-cli": "~13.3.0",
     "@metamask/providers": "^8.1.1",
+    "@ngx-env/builder": "^2.0.2",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@types/jasmine": "~3.10.0",
