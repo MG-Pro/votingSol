@@ -1,6 +1,6 @@
 const {task} = require('hardhat/config.js')
 const artifact = require('../artifacts/contracts/Voting.sol/Voting.json')
-const {CONTRACT, API_URL, PRIVATE_KEY, API_KEY} = process.env
+const { NG_APP_CONTRACT: CONTRACT, API_URL, PRIVATE_KEY, API_KEY} = process.env
 
 task('addCandidate', 'Add candidate')
   .addParam('candidate')
