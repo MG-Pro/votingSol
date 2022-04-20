@@ -3,6 +3,9 @@ pragma solidity ^0.8.3;
 
 contract Voting {
   uint private constant votingPeriod = 259200;
+  uint private activeVotingId;
+  uint private nextVotingId = 1;
+  address private owner;
 
   struct Candidate {
     address id;
@@ -23,12 +26,9 @@ contract Voting {
     uint count;
     mapping(uint => address) mapper; // index => candidate
     mapping(address => uint) candidates; // candidate => votes
-    mapping(address => bool) voters; // voters => voted
+    mapping(address => bool) voters; // voters => isVoted
   }
 
-  address private owner;
-  uint private activeVotingId;
-  uint private nextVotingId = 1;
   mapping(uint => VotingItem) private votings;
 
   modifier onlyOwner {
@@ -60,28 +60,12 @@ contract Voting {
     votings[activeVotingId].count++;
   }
 
-  function getVotings() external view returns (VotingData[] memory) {
-    VotingData[] memory votingItems = new VotingData[](nextVotingId - 1);
+  function getVotings() external view returns (VotingData[] memory votingItems) {
+    votingItems = new VotingData[](nextVotingId - 1);
     for (uint i; i < nextVotingId - 1; i++) {
-      votingItems[i] = VotingData({
-      startDate: votings[i+1].startDate,
-      winner: votings[i+1].winner,
-      candidates: toArray(i+1),
-      isActive: votings[i+1].isActive
-      });
+      votingItems[i] = VotingData(votings[i+1].startDate, votings[i+1].isActive, votings[i+1].winner, toArray(i+1));
     }
     return votingItems;
-  }
-
-  function toArray(uint id) private view returns(Candidate[] memory) {
-    Candidate[] memory candidates = new Candidate[](votings[id].count);
-    for(uint i; i < votings[id].count; i++) {
-      candidates[i] = Candidate({
-      id:  votings[id].mapper[i],
-      votes:  votings[id].candidates[votings[id].mapper[i]]
-      });
-    }
-    return candidates;
   }
 
   function vote(address _candidate) external payable hasActiveVoting {
@@ -94,7 +78,7 @@ contract Voting {
     votings[activeVotingId].candidates[_candidate]++;
   }
 
-  function getActiveVotingId() public view returns (uint) {
+  function getActiveVotingId() external view returns (uint) {
     return activeVotingId;
   }
 
@@ -103,6 +87,7 @@ contract Voting {
 
     address winner;
     uint max;
+    bool hasWinner;
 
     for (uint i = 0; i < votings[activeVotingId].count; i++) {
       address id = votings[activeVotingId].mapper[i];
@@ -111,12 +96,16 @@ contract Voting {
       if (vt != 0 && vt >= max) {
         max = vt;
         winner = id;
+        hasWinner = true;
       }
     }
     votings[activeVotingId].winner = winner;
     votings[activeVotingId].isActive = false;
     activeVotingId = 0;
-    sendRewardToWinner(winner);
+
+    if(winner != address(0)) {
+      payable(winner).transfer(address(this).balance / 100 * 90);
+    }
   }
 
   function isOwner() external view returns (bool) {
@@ -132,12 +121,17 @@ contract Voting {
     return address(this).balance;
   }
 
-  function sendRewardToWinner(address _winner) private {
-    payable(_winner).transfer(address(this).balance / 100 * 90);
-  }
-
   function isExpire() private view returns (bool) {
     return block.timestamp > votings[activeVotingId].startDate + votingPeriod;
+  }
+
+  function toArray(uint id) private view returns(Candidate[] memory candidates) {
+    candidates = new Candidate[](votings[id].count);
+    for(uint i; i < votings[id].count; i++) {
+      address cId = votings[id].mapper[i];
+      candidates[i] = Candidate(cId, votings[id].candidates[cId]);
+    }
+    return candidates;
   }
 
   function isExist(address _candidate) private view returns (bool) {
