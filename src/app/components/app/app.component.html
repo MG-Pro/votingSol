@@ -6,13 +6,12 @@
     </div>
   </div>
 </div>
-
-<main class="content pt-3 pb-3">
-  <div class="container new-voting mb-5">
+<main class="container content pt-3 pb-3">
+  <div class=" new-voting mb-5">
     <div class="row mb-3">
       <div class="col">
         <button class="btn btn-danger me-2" (click)="showAddForm()" [disabled]="!isOwner">
-          {{!activeVotingId ? 'Create new voting' : 'Add candidate'}}
+          Create new voting
         </button>
         <span class="" *ngIf="!isOwner">Only for owner</span>
       </div>
@@ -20,65 +19,81 @@
         <div class="fs-5 fw-bold">Owner panel</div>
         <div class="fs-6 fw-bold">Contract address: {{this.contract.address}}</div>
         <div class="fs-6 fw-bold">Contract balance: {{this.contractBalance}} Eth</div>
-        <button class="btn btn-success mt-3"
-                [disabled]="+this.contractBalance <= 0"
-                (click)="takeFee()">Take Fee</button>
+        <div class="fs-6 fw-bold d-flex justify-content-between">
+          <span class="">Available Fees: {{this.availableFees}} Eth</span>
+          <button class="btn btn-success ms-2 "
+                  [disabled]="+this.availableFees <= 0"
+                  (click)="takeFee()">Take Fee</button>
+        </div>
+
       </div>
     </div>
-    <div class="row">
-      <form class="form" *ngIf="addingMode" (ngSubmit)="addCandidate()">
+    <form class="form row mb-3" *ngIf="addingMode" (ngSubmit)="save()">
+      <div class="row">
+        <div class="col mb-3">
+          <button class="btn btn-success me-2" type="button" (click)="addCandidate()" >Add candidate</button>
+          <button class="btn btn-danger me-2" type="submit" [disabled]="!candidates.length">Save</button>
+          <button class="btn btn-secondary float-end" (click)="hideAddForm()">Cancel</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="mb-3" *ngFor="let c of candidates; let i = index;">
+          <div class="row">
+            <label class="form-label col-2">Candidate #{{i+1}}</label>
+            <div class="col-8">
+              <input class="form-control "
+                     name="#{{i+1}}"
+                     placeholder="Enter address"
+                     [(ngModel)]="candidates[i]"
+              >
+            </div>
+            <div class="col-2">
+              <button class="btn btn-secondary float-end"
+                      (click)="removeCandidate(i)">Remove candidate</button>
+            </div>
+          </div>
+          <div class="invalid-feedback d-block" *ngIf="validation[i]">
+            No valid address!
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="col" *ngIf="votings.length && !addingMode">
+    <div class="fs-3 mb-3 text-center">Votings</div>
+    <ul class="row ">
+      <li class="row voting mb-3 pt-3 pb-3" *ngFor="let voting of votings; let i = index">
+        <div class="col-5 row">
+          <div class="fs-4 mb-3">Info:</div>
+          <div class="col-9 fw-bold">
+            <span>ID: {{voting.id}}</span> <br>
+            <span>Start Date: {{voting.startDate | date: 'short'}}</span> <br>
+            <span>Fund: {{voting.fund}} Eth</span> <br>
+            <span>Status: {{voting.isActive ? 'Active' : 'Stopped'}}</span><br>
+            <span>Winner: {{voting.winner}}</span>
+          </div>
+          <div class="col text-end">
+            <button class="btn btn-secondary mb-3"
+                    [disabled]="!voting.isExpired || !voting.isActive"
+                    (click)="stopVoting(voting.id)">Stop</button>
+          </div>
+        </div>
         <div class="col">
-          <div class="mb-3">
-            <label class="form-label">Candidate</label>
-            <input class="form-control" placeholder="Enter address" [(ngModel)]="newCandidateAddress"
-                   [ngModelOptions]="{standalone: true}">
-            <div class="invalid-feedback d-block" *ngIf="invalidMsg">
-              No valid address!
-            </div>
-          </div>
-          <div class="mb-3">
-            <button class="btn btn-success me-2">Add</button>
-            <button class="btn btn-secondary" (click)="hideAddForm()">Close</button>
-          </div>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="container">
-    <div class="row">
-      <div class="col" >
-        <div class="fs-3 mb-5" *ngIf="votings.length">Votings</div>
-        <ul class="row mb-5" *ngFor="let voting of votings; let i = index">
-          <li class="col voting" (click)="showActive(voting)">
-            <div class="row">
-              <div class="col">
-                <span class="fw-bold">{{i + 1}}. </span>
-                <span class="fw-bold">{{voting.startDate | date}}</span> <br>
-                <span class="fw-bold" *ngIf="voting.winner">Win: {{voting.winner}}</span>
-              </div>
-              <div class="col text-end">
-                <button class="btn btn-secondary" [disabled]="!voting.winner" (click)="stopVoting()">Stop</button>
+          <div class="fs-4 mb-3">Candidates:</div>
+          <div class="row mb-1" *ngFor="let candidate of voting.candidates; let i = index">
+            <div class="col row align-middle">
+              <span class="fw-bold col-8 ">{{i + 1}}. {{candidate.id}}</span>
+              <span class="fw-bold col ">Votes: {{candidate.votes}}</span>
+              <div class="col-1 ">
+                <button
+                    class="btn btn-success text-end"
+                    [disabled]="voting.isExpired"
+                    (click)="vote(voting.id, candidate)">Vote</button>
               </div>
             </div>
-
-          </li>
-        </ul>
-      </div>
-      <div class="col">
-        <div class="fs-3 mb-5" *ngIf="this.shownVoting?.candidates.length">Candidates</div>
-        <div class="row mb-5" *ngFor="let candidate of this.shownVoting?.candidates; let i = index">
-          <div class="col">
-            <span class="fw-bold">{{i + 1}}. </span>
-            <span class="fw-bold">{{candidate.id}}</span>
-            <span class="fw-bold ms-5">Votes: {{candidate.votes}}</span>
-            <button class="btn btn-success ms-5" (click)="vote(candidate)">Vote</button>
           </div>
         </div>
-      </div>
-    </div>
-
+      </li>
+    </ul>
   </div>
-
 </main>
-

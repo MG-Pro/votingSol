@@ -8,34 +8,36 @@ interface ICandidate {
 }
 
 interface IVoting {
+  id: number,
+  fund: string,
   startDate: number,
   candidates: ICandidate[],
   winner: string,
+  isActive: boolean,
+  isExpired: boolean,
 }
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.Default,
 })
 export class AppComponent implements OnInit {
   public isOwner: boolean = false
   public userAddress: string
   public userBalance: string
   public contractBalance: string
+  public availableFees: string
   public addingMode: boolean = false
-  public newCandidateAddress: string = '0xa19Ad61447e5EA79bdDCeB037986944c41e198BC'
-  public invalidMsg: boolean = false
   public votings: IVoting[] = []
-  public activeVotingId: number
-  public shownVoting: IVoting
   private signer: Signer
   public contract: Contract
+  public candidates: string[] = ['0xa19Ad61447e5EA79bdDCeB037986944c41e198BC', '0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2']
+  public validation: boolean[] = []
   private contractAddress = process.env['NG_APP_CONTRACT']
 
-  constructor(private cd: ChangeDetectorRef) {
-  }
+  constructor(private cd: ChangeDetectorRef) {}
 
   public async ngOnInit(): Promise<void> {
     const ethereum = (window as any).ethereum
@@ -44,12 +46,12 @@ export class AppComponent implements OnInit {
     }
     const provider = new ethers.providers.Web3Provider(ethereum)
     await provider.send('eth_requestAccounts', [])
+
     this.signer = provider.getSigner()
     this.userAddress = await this.signer.getAddress()
     this.userBalance = ethers.utils.formatEther((await this.signer.getBalance()))
     this.contract = new ethers.Contract(this.contractAddress, artifact.abi, this.signer)
     this.isOwner = await this.contract['isOwner']()
-    this.activeVotingId = (await this.contract['getActiveVotingId']()).toNumber()
     await this.update()
   }
 
@@ -59,66 +61,74 @@ export class AppComponent implements OnInit {
 
   public hideAddForm(): void {
     this.addingMode = false
-    this.invalidMsg = false
-    this.newCandidateAddress = ''
+    this.candidates = []
+    this.validation = []
   }
 
-  public async addCandidate(): Promise<void> {
-    this.invalidMsg = false
-    if (!ethers.utils.isAddress(this.newCandidateAddress)) {
-      this.invalidMsg = true
+  public addCandidate(): void {
+    this.candidates.push('')
+  }
+
+  public removeCandidate(id: number): void {
+    this.candidates = this.candidates.filter((c, i) => i !== id)
+  }
+
+  public async save(): Promise<void> {
+    this.validation = this.candidates.map(c => !ethers.utils.isAddress(c))
+
+    if(this.validation.includes(true)) {
       return
     }
-
-    const tx = await this.contract['addCandidate'](this.newCandidateAddress)
+    const tx = await this.contract['createVoting'](this.candidates)
     this.hideAddForm()
     await tx.wait()
-    this.activeVotingId = (await this.contract['getActiveVotingId']()).toNumber()
     await this.update()
   }
 
-  public async vote(candidate: ICandidate): Promise<void> {
-    const tx = await this.contract['vote'](candidate.id, {
+  public async vote(votingId: number, candidate: ICandidate): Promise<void> {
+    const tx = await this.contract['vote'](votingId, candidate.id, {
       value: ethers.utils.parseEther('0.01'),
     })
     await tx.wait()
     await this.update()
   }
 
-  public async showActive(voting: IVoting): Promise<void> {
-    this.shownVoting = voting
-    this.cd.detectChanges()
-  }
-
-  public async stopVoting(): Promise<void> {
-    await this.contract['stopVoting']()
+  public async stopVoting(votingId: number,): Promise<void> {
+    const tx = await this.contract['stopVoting'](votingId)
+    await tx.wait()
     await this.update()
   }
 
   public async takeFee(): Promise<void> {
-    await this.contract['sendFeeToOwner']()
+    const tx = await this.contract['sendFeesToOwner']()
+    await tx.wait()
+    await this.update()
   }
 
   private async getVotings(): Promise<void> {
     this.votings = (await this.contract['getVotings']()).map((voting) => {
+      console.log(voting.isExpired)
       return {
-        startDate: voting.startDate.toNumber(),
+        id: voting.id.toNumber(),
+        fund: ethers.utils.formatEther(voting.fund),
+        startDate: voting.startDate.toNumber() * 1000,
         candidates: voting.candidates.map(({id, votes}) => ({
           id,
           votes: votes.toNumber(),
         })),
         winner: voting.winner !== ethers.constants.AddressZero ? voting.winner : null,
+        isActive: voting.isActive,
+        isExpired: voting.isExpired,
       }
     })
-    if (this.votings.length) {
-      await this.showActive(this.votings[0])
-    }
   }
 
   private async update(): Promise<void> {
     await this.getVotings()
     if (this.isOwner) {
-      this.contractBalance = ethers.utils.formatEther((await this.contract['getBalance']()))
+      const balances: string[] = await this.contract['getBalances']()
+      this.contractBalance = ethers.utils.formatEther(balances[0])
+      this.availableFees = ethers.utils.formatEther(balances[1])
     }
     this.cd.detectChanges()
   }
