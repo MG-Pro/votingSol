@@ -4,7 +4,7 @@ pragma solidity ^0.8.3;
 import "hardhat/console.sol";
 
 contract Voting {
-  uint private constant votingPeriod = 100;
+  uint private constant votingPeriod = 259200;
   uint private constant votePayment = 0.01 ether;
   uint private votingCounter;
   uint private availableFees;
@@ -47,7 +47,7 @@ contract Voting {
   }
 
   modifier onlyActive(uint id) {
-    require(votings[id].isActive, "Voting finished!");
+    require(votings[id].isActive, "Voting does not active!");
     _;
   }
 
