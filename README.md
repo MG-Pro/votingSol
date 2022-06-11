@@ -1,5 +1,2 @@
-# VotingSol v.2
+# VotingSol v.3
 
-![img.png](docs/coverage.png)
-
-![img.png](docs/test.png)

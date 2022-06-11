@@ -20,7 +20,6 @@ describe('Voting', function () {
 
   beforeEach(async () => {
     [deployer, user1, user2, user3, candidate1, candidate2, candidate3, candidate4, candidate5, candidate6, candidate7] = await ethers.getSigners()
-    // console.log(await ethers.getSigners())
     const Voting = await ethers.getContractFactory('Voting', deployer)
     contract = await Voting.deploy()
     await contract.deployed()
@@ -51,19 +50,22 @@ describe('Voting', function () {
     await expect(contract.connect(user1).stopVoting(1)).to.revertedWith('Voting does not active!')
   })
 
-  describe('Creating voting', () => {
-    it('Should revert if not owner', async () => {
-      await expect(contract.connect(user1).createVoting([candidate1.address])).to.reverted
-    })
-
-    it('Should revert if send two the same candidates', async () => {
-      await expect(
-        contract.connect(deployer).createVoting([candidate1.address, candidate1.address]),
-      ).to.revertedWith('Candidate duplicated!')
-    })
+  it('Should revert empty array if there are not votings', async () => {
+    const votings = await contract.connect(user1).getVotings()
+    expect(votings.length).to.equal(0)
   })
 
-  describe('Voting', () => {
+  it('Should revert if not owner', async () => {
+    await expect(contract.connect(user1).createVoting([candidate1.address])).to.revertedWith('Only for owner')
+  })
+
+  it('Should revert if send two the same candidates', async () => {
+    await expect(
+      contract.connect(deployer).createVoting([candidate1.address, candidate1.address]),
+    ).to.revertedWith('Candidate duplicated!')
+  })
+
+  describe('Voting actions', () => {
     let candidates
     let votings
     let voting
@@ -82,6 +84,21 @@ describe('Voting', function () {
       votings = await contract.connect(user1).getVotings()
       voting = votings[0]
     })
+
+    it('Should return voting with candidates by id', async () => {
+      const voting = await contract.connect(user1).getVotingById(1)
+      expect(voting.candidates.length).to.equal(candidates.length)
+    })
+
+    it('Should revert if there isn`t voting', async () => {
+
+      await expect(contract.connect(user1).getVotingById(0))
+        .to.revertedWith('There is not voting')
+
+      await expect(contract.connect(user1).getVotingById(2))
+        .to.revertedWith('There is not voting')
+    })
+
 
     it('Should create voting with candidates', async () => {
       expect(votings.length).to.equal(1)
@@ -103,7 +120,7 @@ describe('Voting', function () {
     it('Should revert if there is voting time not expired yet', async () => {
       await network.provider.send('evm_increaseTime', [oneDay])
       await network.provider.send('evm_mine')
-      await expect(contract.connect(user1).stopVoting(voting.id)).to.reverted
+      await expect(contract.connect(user1).stopVoting(voting.id)).to.revertedWith('Voting time not expired')
     })
 
     it('Should stop voting', async () => {
@@ -119,7 +136,7 @@ describe('Voting', function () {
       await network.provider.send('evm_mine')
       await expect(contract.connect(user1).vote(voting.id, candidate1.address, {
         value: ethers.utils.parseEther('0.01'),
-      })).to.reverted
+      })).to.revertedWith('Voting time expired!')
     })
 
     it('Should set winner', async () => {
@@ -247,6 +264,36 @@ describe('Voting', function () {
 
     it('Should revert if nothing to withdraw', async () => {
       await expect(contract.connect(deployer).sendFeesToOwner()).to.revertedWith('Not available to withdraw')
+    })
+
+    it('Should create three votings with candidates', async () => {
+      await contract.connect(deployer).createVoting(candidates)
+      await contract.connect(deployer).createVoting(candidates)
+      votings = await contract.connect(user1).getVotings()
+      expect(votings.length).to.equal(3)
+      expect(voting.candidates.length).to.equal(candidates.length)
+    })
+
+    it('Should create voting with 100 candidates', async () => {
+      candidates = Array(100).fill(0x0).map(() => {
+        return ethers.Wallet.createRandom().address
+      })
+      await contract.connect(deployer).createVoting(candidates)
+      voting = await contract.connect(user1).getVotingById(2)
+      expect(voting.candidates.length).to.equal(candidates.length)
+    })
+
+    it('Should stop second voting', async () => {
+      await contract.connect(deployer).createVoting(candidates)
+      await contract.connect(deployer).createVoting(candidates)
+      await network.provider.send('evm_increaseTime', [threeDays])
+      await network.provider.send('evm_mine')
+      let [_, voting2] = await contract.connect(user1).getVotings()
+
+      await contract.connect(user1).stopVoting(voting2.id);
+
+      [_, voting2] = await contract.connect(user1).getVotings()
+      expect(voting2.isActive).to.equal(false)
     })
   })
 })
