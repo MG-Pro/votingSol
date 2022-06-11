@@ -82,7 +82,7 @@ contract Voting {
         }
     }
 
-    // It set the vote to candidate. Simultaneously it recalculate winner and votes of winner
+    // It sets the vote to candidate. Simultaneously it recalculate winner and votes of winner
     function vote(uint votingId, address _candidate) external payable onlyActive(votingId) {
         require(msg.value == votePayment, "Pay 0.01 eth");
         require(!isExpire(votingId), "Voting time expired!");
@@ -125,7 +125,7 @@ contract Voting {
         }
     }
 
-    // It check owner
+    // It checks owner
     function isOwner() external view returns (bool) {
         return owner == msg.sender;
     }
