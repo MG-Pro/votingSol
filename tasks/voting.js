@@ -1,5 +1,4 @@
 const {task} = require('hardhat/config.js')
-const artifact = require('../artifacts/contracts/Voting.sol/Voting.json')
 const {NG_APP_CONTRACT: CONTRACT, API_URL, PRIVATE_KEY, API_KEY} = process.env
 
 task('createVoting', 'Create Voting')
@@ -8,8 +7,7 @@ task('createVoting', 'Create Voting')
   .setAction(async (taskArgs, hre) => {
     const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
     const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
-
+    const contract = await hre.ethers.getContractAt('Voting', CONTRACT, signer)
     const tx = await contract.createVoting(taskArgs.candidates)
     await tx.wait()
   })
@@ -19,7 +17,7 @@ task('sendFeesToOwner', 'Take fees')
   .setAction(async (taskArgs, hre) => {
     const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
     const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
+    const contract = await hre.ethers.getContractAt('Voting', CONTRACT, signer)
     await contract.sendFeesToOwner()
   })
 
@@ -28,10 +26,8 @@ task('getVotings', 'List of votings')
   .setAction(async (taskArgs, hre) => {
     const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
     const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
-    const result = await contract.getVotings()
-    console.log(result)
-    return result
+    const contract = await hre.ethers.getContractAt('Voting', CONTRACT, signer)
+    return await contract.getVotings()
   })
 
 task('getBalances', 'Balance')
@@ -39,11 +35,8 @@ task('getBalances', 'Balance')
   .setAction(async (taskArgs, hre) => {
     const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
     const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
-
-    const result = await contract.getBalances()
-    console.log(result)
-    return result
+    const contract = await hre.ethers.getContractAt('Voting', CONTRACT, signer)
+    return await contract.getBalances()
   })
 
 task('vote', 'Vote')
@@ -53,7 +46,7 @@ task('vote', 'Vote')
   .setAction(async (taskArgs, hre) => {
     const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
     const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
+    const contract = await hre.ethers.getContractAt('Voting', CONTRACT, signer)
     await contract.vote(taskArgs.votingId, taskArgs.candidate)
   })
 
@@ -63,6 +56,6 @@ task('stopVoting', 'Stop voting')
   .setAction(async (taskArgs, hre) => {
     const provider = hre.ethers.getDefaultProvider(API_URL, API_KEY)
     const signer = new hre.ethers.Wallet(taskArgs.privateKey, provider)
-    const contract = new hre.ethers.Contract(CONTRACT, artifact.abi, signer)
+    const contract = await hre.ethers.getContractAt('Voting', CONTRACT, signer)
     await contract.stopVoting(taskArgs.votingId)
   })
